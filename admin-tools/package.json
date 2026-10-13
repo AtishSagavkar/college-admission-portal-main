@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "set-role": "node set-user-role.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.10.0"
+  }
+}

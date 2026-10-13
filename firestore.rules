@@ -1,0 +1,135 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasRole(role) {
+      return signedIn() && request.auth.token.role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin') || (signedIn() && request.auth.token.admin == true);
+    }
+
+    function isStaff() {
+      return isAdmin() || hasRole('teacher');
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId || isStaff();
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'student'
+        && request.resource.data.keys().hasOnly([
+          'uid', 'name', 'email', 'phone', 'role', 'profile', 'createdAt'
+        ]);
+      allow update: if signedIn()
+        && ((request.auth.uid == userId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'phone', 'profile', 'updatedAt']))
+          || (isStaff()
+            && resource.data.role == 'student'
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['admissionStatus', 'admissionApplicationId', 'updatedAt'])
+            && existsAfter(/databases/$(database)/documents/applications/$(request.resource.data.admissionApplicationId))
+            && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.admissionApplicationId)).data.ownerUid == userId
+            && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.admissionApplicationId)).data.status == request.resource.data.admissionStatus));
+      allow delete: if isAdmin();
+    }
+
+    match /applications/{applicationId} {
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.status == 'submitted';
+      allow read: if isStaff()
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update: if isAdmin()
+        || (hasRole('teacher')
+          && resource.data.status in ['submitted', 'under_review']
+          && request.resource.data.status in ['under_review', 'teacher_approved', 'rejected']
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'remarks', 'history', 'teacherReviewedBy', 'teacherReviewedAt'])
+          && (request.resource.data.status != 'teacher_approved'
+            || request.resource.data.teacherReviewedBy == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+
+    match /serviceRequests/{requestId} {
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.status == 'submitted';
+      allow read: if isStaff()
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update: if isAdmin()
+        || (hasRole('teacher')
+          && resource.data.status == 'submitted'
+          && request.resource.data.status == 'forwarded_to_admin'
+          && request.resource.data.forwardedBy == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'status', 'forwardedAt', 'forwardedBy', 'forwardedByName',
+              'teacherReviewNote', 'teacherReviewedAt', 'teacherReviewedBy',
+              'teacherReviewedByName'
+            ]));
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow create: if isAdmin()
+        || (signedIn()
+          && request.resource.data.audienceRole == 'teacher'
+          && request.resource.data.type == 'service_request_submitted'
+          && existsAfter(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId))
+          && getAfter(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId)).data.ownerUid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId)).data.status == 'submitted')
+        || (signedIn()
+          && request.resource.data.audienceRole == 'teacher'
+          && request.resource.data.type == 'admission_application_submitted'
+          && request.resource.data.applicationId is string
+          && existsAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId))
+          && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId)).data.ownerUid == request.auth.uid
+          && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId)).data.status == 'submitted')
+        || (hasRole('teacher')
+          && request.resource.data.audienceRole == 'admin'
+          && request.resource.data.type == 'service_request_forwarded'
+          && existsAfter(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId))
+          && getAfter(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId)).data.status == 'forwarded_to_admin'
+          && getAfter(/databases/$(database)/documents/serviceRequests/$(request.resource.data.requestId)).data.forwardedBy == request.auth.uid)
+        || (isStaff()
+          && request.resource.data.type == 'admission_status'
+          && request.resource.data.applicationId is string
+          && existsAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId))
+          && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId)).data.ownerUid == request.resource.data.ownerUid
+          && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId)).data.status == request.resource.data.status)
+        || (hasRole('teacher')
+          && request.resource.data.audienceRole == 'admin'
+          && request.resource.data.type == 'admission_ready_for_decision'
+          && request.resource.data.applicationId is string
+          && existsAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId))
+          && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId)).data.teacherReviewedBy == request.auth.uid
+          && getAfter(/databases/$(database)/documents/applications/$(request.resource.data.applicationId)).data.status == 'teacher_approved');
+      allow read: if isStaff()
+        || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow update: if isAdmin()
+        || (signedIn()
+          && (resource.data.ownerUid == request.auth.uid
+            || resource.data.audienceRole == request.auth.token.role)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+          && request.resource.data.read is bool);
+      allow delete: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# Logs
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Firebase Admin SDK private keys
+*firebase-adminsdk*.json
