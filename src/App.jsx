@@ -1,14 +1,27 @@
-import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useOutletContext } from 'react-router-dom'
+```jsx
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useOutletContext,
+} from 'react-router-dom'
+
 import AdminLayout from './components/layout/AdminLayout'
 import StudentLayout from './components/layout/StudentLayout'
 import TeacherLayout from './components/layout/TeacherLayout'
+
 import { AppProvider } from './context/AppContext'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
+
 import AccessDenied from './pages/auth/AccessDenied'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminServicesPage from './pages/admin/AdminServicesPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
@@ -16,12 +29,15 @@ import AdminApplicationsPage from './pages/admin/Applications'
 import StudentsPage from './pages/admin/StudentsPage'
 import ServiceRequestsPage from './pages/admin/ServiceRequestsPage'
 import TeachersPage from './pages/admin/TeachersPage'
+import StudentDetailsPage from './pages/admin/StudentDetailsPage'
+
 import About from './pages/public/About'
 import Admissions from './pages/public/Admissions'
 import Contact from './pages/public/Contact'
 import Home from './pages/public/Home'
 import NotFound from './pages/public/NotFound'
 import Services from './pages/public/Services'
+
 import AdmissionForm from './pages/student/AdmissionForm'
 import ApplicationDetails from './pages/student/ApplicationDetails'
 import ApplicationStatus from './pages/student/ApplicationStatus'
@@ -31,10 +47,11 @@ import ServiceRequests from './pages/student/ServiceRequests'
 import ServicesPage from './pages/student/Services'
 import StudentDashboard from './pages/student/StudentDashboard'
 import StudentProfile from './pages/student/StudentProfile'
+
 import TeacherDashboard from './pages/teacher/TeacherDashboard'
 import TeacherReviewQueue from './pages/teacher/TeacherReviewQueue'
+
 import Spinner from './components/common/Spinner'
-import StudentDetailsPage from './pages/admin/StudentDetailsPage'
 
 function ProtectedRoute({ allowedRoles = [] }) {
   const { isAuthenticated, currentUser, loading } = useAuth()
@@ -62,7 +79,11 @@ function ProtectedRoute({ allowedRoles = [] }) {
 }
 
 function AdmissionApprovedRoute() {
-  const { applicationsLoading, hasApprovedAdmission, hasSubmittedApplication } = useOutletContext()
+  const {
+    applicationsLoading,
+    hasApprovedAdmission,
+    hasSubmittedApplication,
+  } = useOutletContext()
 
   if (applicationsLoading) {
     return (
@@ -75,15 +96,26 @@ function AdmissionApprovedRoute() {
   if (!hasApprovedAdmission) {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">Services unlock after admission approval</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Services unlock after admission approval
+        </h1>
+
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Once an admin approves your admission, you can request certificates, academic help, and other student services here.
+          Once an admin approves your admission, you can request
+          certificates, academic help, and other student services here.
         </p>
+
         <Link
-          to={hasSubmittedApplication ? '/student/application' : '/student/admission'}
+          to={
+            hasSubmittedApplication
+              ? '/student/application'
+              : '/student/admission'
+          }
           className="mt-5 inline-flex rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
         >
-          {hasSubmittedApplication ? 'Check application status' : 'Complete admission application'}
+          {hasSubmittedApplication
+            ? 'Check application status'
+            : 'Complete admission application'}
         </Link>
       </div>
     )
@@ -94,7 +126,7 @@ function AdmissionApprovedRoute() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/college-admission-portal-main">
       <AuthProvider>
         <AppProvider>
           <Routes>
@@ -105,11 +137,17 @@ function App() {
             <Route path="/services" element={<Services />} />
             <Route path="/contact" element={<Contact />} />
 
-            {/* Auth Routes */}
+            {/* Authentication Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/access-denied" element={<AccessDenied />} />
+            <Route
+              path="/forgot-password"
+              element={<ForgotPassword />}
+            />
+            <Route
+              path="/access-denied"
+              element={<AccessDenied />}
+            />
 
             {/* Student Routes */}
             <Route element={<ProtectedRoute allowedRoles={['student']} />}>
@@ -134,6 +172,7 @@ function App() {
                   path="/student/profile"
                   element={<StudentProfile />}
                 />
+
                 <Route element={<AdmissionApprovedRoute />}>
                   <Route
                     path="/student/services"
@@ -148,6 +187,7 @@ function App() {
                     element={<ServiceRequests />}
                   />
                 </Route>
+
                 <Route
                   path="/student/notifications"
                   element={<Notifications />}
@@ -227,7 +267,7 @@ function App() {
               </Route>
             </Route>
 
-            {/* Fallback */}
+            {/* Fallback Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppProvider>
@@ -237,3 +277,4 @@ function App() {
 }
 
 export default App
+```
